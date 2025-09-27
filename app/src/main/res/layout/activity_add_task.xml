@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <EditText
+        android:id="@+id/triggerEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Trigger text" />
+
+    <Button
+        android:id="@+id/selectSoundButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Sound" />
+
+    <TextView
+        android:id="@+id/soundUriText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No sound selected"
+        android:padding="8dp" />
+
+    <Button
+        android:id="@+id/saveTaskButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Task" />
+</LinearLayout>
