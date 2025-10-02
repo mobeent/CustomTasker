@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresPermission
@@ -18,6 +19,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.customtasker.SoundUtils.requestDoNotDisturbAccess
 import com.example.customtasker.databinding.ActivityMainBinding
 import com.example.customtasker.db.AppDatabase
 import com.example.customtasker.model.Task
@@ -44,6 +46,12 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         db = AppDatabase.getDatabase(this)
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!notificationManager.isNotificationPolicyAccessGranted) {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        }
+        requestDoNotDisturbAccess(this)
 
         binding.taskRecyclerView.layoutManager = LinearLayoutManager(this)
         adapter = TaskAdapter(

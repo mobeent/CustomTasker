@@ -1,10 +1,13 @@
 package com.example.customtasker
 
 import android.app.Activity
+import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -45,7 +48,10 @@ class AddTaskActivity : AppCompatActivity() {
         }
 
         binding.selectSoundButton.setOnClickListener {
-            val intent = Intent(Intent.ACTION_PICK, MediaStore.Audio.Media.EXTERNAL_CONTENT_URI)
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "audio/*"
+            }
             startActivityForResult(intent, REQUEST_CODE_PICK_SOUND)
         }
 
@@ -100,10 +106,53 @@ class AddTaskActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_CODE_PICK_SOUND && resultCode == Activity.RESULT_OK) {
-            selectedSoundUri = data?.data
-            if (selectedSoundUri == null) {
+            val uri = data?.data
+            if (uri != null) {
+                // Persist access permission
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+
+                selectedSoundUri = copyAudioToMediaStore(uri) ?: uri
+                binding.soundUriText.text = selectedSoundUri.toString()
+            } else {
                 Toast.makeText(this, "No audio file selected", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun copyAudioToMediaStore(sourceUri: Uri): Uri? {
+        val resolver = contentResolver
+        val fileName = queryFileName(sourceUri) ?: "audio_${System.currentTimeMillis()}.mp3"
+
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
+            put(MediaStore.Audio.Media.MIME_TYPE, "audio/mpeg")
+            put(MediaStore.Audio.Media.RELATIVE_PATH, "${Environment.DIRECTORY_MUSIC}/MyAppAudios")
+            put(MediaStore.Audio.Media.IS_MUSIC, true)
+        }
+
+        val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val newAudioUri = resolver.insert(collection, contentValues) ?: return null
+
+        resolver.openOutputStream(newAudioUri).use { output ->
+            resolver.openInputStream(sourceUri).use { input ->
+                input?.copyTo(output!!)
+            }
+        }
+
+        return newAudioUri
+    }
+
+    private fun queryFileName(uri: Uri): String? {
+        val projection = arrayOf(OpenableColumns.DISPLAY_NAME)
+        contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst()) {
+                return cursor.getString(nameIndex)
+            }
+        }
+        return null
     }
 }
