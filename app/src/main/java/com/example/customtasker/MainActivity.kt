@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AppCompatActivity
@@ -45,7 +46,24 @@ class MainActivity : AppCompatActivity() {
         db = AppDatabase.getDatabase(this)
 
         binding.taskRecyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = TaskAdapter(taskList)
+        adapter = TaskAdapter(
+            taskList,
+            onDeleteClick = { taskToDelete ->
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        db.taskDao().deleteTask(taskToDelete)
+                    }
+                    adapter.removeTask(taskToDelete)
+                }
+            },
+            onItemClick = { selectedTask ->
+                Log.d("MainActivity", "Opening task with ID: ${selectedTask.id}")
+
+                val intent = Intent(this, AddTaskActivity::class.java)
+                intent.putExtra("task_id", selectedTask.id)
+                startActivity(intent)
+            }
+        )
         binding.taskRecyclerView.adapter = adapter
 
         binding.addTaskButton.setOnClickListener {
@@ -57,6 +75,10 @@ class MainActivity : AppCompatActivity() {
             val tasksFromDb = withContext(Dispatchers.IO) {
                 db.taskDao().getAllTasks()
             }
+
+            Log.d("MainActivity", "Fetched ${tasksFromDb.size} tasks from DB")
+            tasksFromDb.forEach { Log.d("MainActivity", "Task: id=${it.id}, trigger=${it.triggerText}") }
+
             taskList.clear()
             taskList.addAll(tasksFromDb)
             adapter.notifyDataSetChanged()
@@ -76,6 +98,10 @@ class MainActivity : AppCompatActivity() {
             val tasksFromDb = withContext(Dispatchers.IO) {
                 db.taskDao().getAllTasks()
             }
+
+            Log.d("MainActivity", "Fetched ${tasksFromDb.size} tasks from DB")
+            tasksFromDb.forEach { Log.d("MainActivity", "Task: id=${it.id}, trigger=${it.triggerText}") }
+
             taskList.clear()
             taskList.addAll(tasksFromDb)
             adapter.notifyDataSetChanged()

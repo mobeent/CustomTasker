@@ -8,6 +8,8 @@ import android.util.Log
 object SoundUtils {
     fun playSound(context: Context, uri: Uri) {
         try {
+            Log.d("SoundUtils", "File path: $uri")
+
             val player = MediaPlayer().apply {
                 setDataSource(context, uri)
                 prepare()
