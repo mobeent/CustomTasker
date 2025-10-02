@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AppCompatActivity
@@ -17,6 +19,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.customtasker.SoundUtils.requestDoNotDisturbAccess
 import com.example.customtasker.databinding.ActivityMainBinding
 import com.example.customtasker.db.AppDatabase
 import com.example.customtasker.model.Task
@@ -44,8 +47,31 @@ class MainActivity : AppCompatActivity() {
 
         db = AppDatabase.getDatabase(this)
 
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!notificationManager.isNotificationPolicyAccessGranted) {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        }
+        requestDoNotDisturbAccess(this)
+
         binding.taskRecyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = TaskAdapter(taskList)
+        adapter = TaskAdapter(
+            taskList,
+            onDeleteClick = { taskToDelete ->
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        db.taskDao().deleteTask(taskToDelete)
+                    }
+                    adapter.removeTask(taskToDelete)
+                }
+            },
+            onItemClick = { selectedTask ->
+                Log.d("MainActivity", "Opening task with ID: ${selectedTask.id}")
+
+                val intent = Intent(this, AddTaskActivity::class.java)
+                intent.putExtra("task_id", selectedTask.id)
+                startActivity(intent)
+            }
+        )
         binding.taskRecyclerView.adapter = adapter
 
         binding.addTaskButton.setOnClickListener {
@@ -57,6 +83,10 @@ class MainActivity : AppCompatActivity() {
             val tasksFromDb = withContext(Dispatchers.IO) {
                 db.taskDao().getAllTasks()
             }
+
+            Log.d("MainActivity", "Fetched ${tasksFromDb.size} tasks from DB")
+            tasksFromDb.forEach { Log.d("MainActivity", "Task: id=${it.id}, trigger=${it.triggerText}") }
+
             taskList.clear()
             taskList.addAll(tasksFromDb)
             adapter.notifyDataSetChanged()
@@ -76,6 +106,10 @@ class MainActivity : AppCompatActivity() {
             val tasksFromDb = withContext(Dispatchers.IO) {
                 db.taskDao().getAllTasks()
             }
+
+            Log.d("MainActivity", "Fetched ${tasksFromDb.size} tasks from DB")
+            tasksFromDb.forEach { Log.d("MainActivity", "Task: id=${it.id}, trigger=${it.triggerText}") }
+
             taskList.clear()
             taskList.addAll(tasksFromDb)
             adapter.notifyDataSetChanged()
